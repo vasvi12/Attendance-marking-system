@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Students · Attendance System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Students</h1>
+    <p>{{ students|length }} student{{ students|length|pluralize }} registered</p>
+  </div>
+  <div class="actions-row">
+    <button class="btn btn-secondary" id="retrainBtn" type="button">Retrain Recognizer</button>
+    <a class="btn btn-primary" href="{% url 'attendance:student_create' %}">Add Student</a>
+  </div>
+</div>
+
+<div id="retrainMessage"></div>
+
+{% if students %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Student ID</th>
+          <th>Name</th>
+          <th>Enrolled</th>
+          <th>Recognition Status</th>
+          <th>Registered</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+          <tr>
+            <td>{{ student.student_id }}</td>
+            <td>{{ student.name }}</td>
+            <td>{{ student.created_at|date:"M j, Y" }}</td>
+            <td>
+              {% if student.is_enrolled %}
+                <span class="badge badge-success">{{ student.sample_count }} samples</span>
+              {% else %}
+                <span class="badge badge-warning">Not enrolled</span>
+              {% endif %}
+            </td>
+            <td>{% if student.is_active %}<span class="badge badge-neutral">Active</span>{% else %}<span class="badge badge-danger">Inactive</span>{% endif %}</td>
+            <td><a href="{% url 'attendance:student_capture' student.pk %}">Capture faces &rarr;</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card empty-state">
+    No students yet. <a href="{% url 'attendance:student_create' %}">Register your first student</a>.
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById("retrainBtn").addEventListener("click", async function () {
+    const btn = this;
+    const messageEl = document.getElementById("retrainMessage");
+    btn.disabled = true;
+    btn.textContent = "Training...";
+    try {
+      const result = await postJSON("{% url 'attendance:train_recognizer' %}", {});
+      messageEl.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
+    } catch (err) {
+      messageEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Retrain Recognizer";
+    }
+  });
+</script>
+{% endblock %}

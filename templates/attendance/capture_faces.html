@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Capture Faces · {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Capture Face Samples</h1>
+    <p>{{ student.name }} &middot; {{ student.student_id }}</p>
+  </div>
+  <div class="actions-row">
+    <a class="btn btn-secondary" href="{% url 'attendance:student_list' %}">Back to Students</a>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="camera-frame">
+      <video id="video" autoplay playsinline muted></video>
+      <div class="camera-status" id="cameraStatus">Starting camera&hellip;</div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-bar-fill" id="progressFill" style="width: 0%;"></div>
+    </div>
+    <p class="helper-text" id="progressText">0 / {{ samples_target }} samples captured</p>
+
+    <div class="actions-row">
+      <button class="btn btn-primary" id="captureBtn" type="button" disabled>Capture Sample</button>
+      <button class="btn btn-secondary" id="autoCaptureBtn" type="button" disabled>Auto-Capture</button>
+    </div>
+    <div id="captureMessage" style="margin-top: 14px;"></div>
+  </div>
+
+  <div class="card">
+    <h2 class="section-title">Tips for good samples</h2>
+    <ul class="helper-text" style="padding-left: 18px;">
+      <li>Only one face should be visible in the frame.</li>
+      <li>Capture samples under a couple of different lighting conditions if possible.</li>
+      <li>Slightly vary head angle between captures (straight, slight left/right turn).</li>
+      <li>Keep a normal distance from the camera &mdash; not too close, not too far.</li>
+      <li>Avoid heavy motion blur; hold still for each capture.</li>
+    </ul>
+    <p class="helper-text">
+      Aiming for {{ samples_target }} samples gives the recognizer enough variation to be
+      reasonably tolerant of everyday changes in pose and lighting. When you're done, go to the
+      Students page and click <strong>Retrain Recognizer</strong>.
+    </p>
+    <a class="btn btn-primary btn-block" href="{% url 'attendance:student_list' %}">Done &mdash; Back to Students</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  const video = document.getElementById("video");
+  const statusEl = document.getElementById("cameraStatus");
+  const captureBtn = document.getElementById("captureBtn");
+  const autoCaptureBtn = document.getElementById("autoCaptureBtn");
+  const messageEl = document.getElementById("captureMessage");
+  const progressFill = document.getElementById("progressFill");
+  const progressText = document.getElementById("progressText");
+
+  const target = {{ samples_target }};
+  const captureUrl = "{% url 'attendance:capture_face_sample' student.pk %}";
+  let sampleCount = 0;
+  let autoTimer = null;
+
+  function updateProgress() {
+    const pct = Math.min(100, Math.round((sampleCount / target) * 100));
+    progressFill.style.width = pct + "%";
+    progressText.textContent = `${sampleCount} / ${target} samples captured`;
+  }
+
+  function showMessage(text, isError) {
+    messageEl.innerHTML = `<div class="alert ${isError ? "alert-error" : "alert-success"}">${text}</div>`;
+  }
+
+  async function captureOnce() {
+    captureBtn.disabled = true;
+    try {
+      const dataUrl = captureFrameDataURL(video, 0.85);
+      const result = await postJSON(captureUrl, { image: dataUrl });
+      if (result.success) {
+        sampleCount = result.sample_count;
+        updateProgress();
+        showMessage(result.message, false);
+        if (sampleCount >= target && autoTimer) {
+          stopAutoCapture();
+        }
+      } else {
+        showMessage(result.message, true);
+      }
+    } catch (err) {
+      showMessage(err.message, true);
+    } finally {
+      captureBtn.disabled = false;
+    }
+  }
+
+  function startAutoCapture() {
+    autoCaptureBtn.textContent = "Stop Auto-Capture";
+    autoTimer = setInterval(captureOnce, 1200);
+  }
+
+  function stopAutoCapture() {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    autoCaptureBtn.textContent = "Auto-Capture";
+  }
+
+  captureBtn.addEventListener("click", captureOnce);
+  autoCaptureBtn.addEventListener("click", function () {
+    if (autoTimer) {
+      stopAutoCapture();
+    } else {
+      startAutoCapture();
+    }
+  });
+
+  startCamera(video)
+    .then(function () {
+      statusEl.textContent = "Camera live";
+      captureBtn.disabled = false;
+      autoCaptureBtn.disabled = false;
+    })
+    .catch(function (err) {
+      statusEl.textContent = "Camera error";
+      showMessage(err.message, true);
+    });
+
+  window.addEventListener("beforeunload", function () {
+    if (video.srcObject) {
+      stopCamera(video.srcObject);
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+# Web framework
+Django>=4.2,<5.0
+
+# Computer vision - includes cv2.face (LBPH recognizer) and the bundled
+# Haar cascade classifiers used by attendance/services/face_detection.py
+# and face_recognition.py. Requires numpy>=2.
+opencv-contrib-python>=4.9,<5.0
+
+# Array operations behind every OpenCV call.
+numpy>=2.0,<3.0
+
+# Image encode/decode support used alongside OpenCV.
+Pillow>=10.0,<11.0
+
+# Reads configuration from .env / the environment (see .env.example).
+python-decouple>=3.8,<4.0

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Live Attendance · Attendance System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Live Attendance</h1>
+    <p>Point the camera at the classroom. Recognized students are marked present automatically.</p>
+  </div>
+</div>
+
+{% if not model_trained %}
+  <div class="alert alert-error">
+    No trained recognition model was found yet. Enroll at least one student with face samples,
+    then go to the <a href="{% url 'attendance:student_list' %}">Students page</a> and click
+    <strong>Retrain Recognizer</strong> before starting live attendance.
+  </div>
+{% endif %}
+
+<div class="two-col">
+  <div class="card">
+    <div class="camera-frame">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="camera-status" id="cameraStatus">Starting camera&hellip;</div>
+    </div>
+    <div class="actions-row" style="margin-top: 16px;">
+      <button class="btn btn-primary" id="startBtn" type="button" {% if not model_trained %}disabled{% endif %}>Start Attendance</button>
+      <button class="btn btn-secondary" id="stopBtn" type="button" disabled>Stop</button>
+    </div>
+    <p class="helper-text" id="frameError" style="margin-top: 10px;"></p>
+  </div>
+
+  <div class="card">
+    <h2 class="section-title">Recognition Feed</h2>
+    <div class="recognition-feed" id="recognitionFeed">
+      <p class="helper-text">Events will appear here once attendance starts.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  const video = document.getElementById("video");
+  const overlay = document.getElementById("overlay");
+  const ctx = overlay.getContext("2d");
+  const statusEl = document.getElementById("cameraStatus");
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const frameError = document.getElementById("frameError");
+  const feed = document.getElementById("recognitionFeed");
+
+  const processUrl = "{% url 'attendance:process_live_frame' %}";
+  const FRAME_INTERVAL_MS = 900;
+
+  let stream = null;
+  let loopTimer = null;
+  let processing = false;
+  const lastLoggedStatus = {};
+  let lastUnknownLogTime = 0;
+  const UNKNOWN_LOG_COOLDOWN_MS = 5000;
+
+  const statusStyles = {
+    marked: { badge: "badge-success", label: "Attendance Marked" },
+    already_marked: { badge: "badge-neutral", label: "Already Marked" },
+    confirming: { badge: "badge-warning", label: "Recognizing" },
+    unknown: { badge: "badge-danger", label: "Unknown Face" },
+    low_quality: { badge: "badge-warning", label: "Hold Still" },
+    not_trained: { badge: "badge-danger", label: "Not Trained" },
+  };
+
+  function resizeOverlay() {
+    overlay.width = video.videoWidth || video.clientWidth;
+    overlay.height = video.videoHeight || video.clientHeight;
+  }
+
+  function drawDetections(faces) {
+    resizeOverlay();
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    faces.forEach(function (face) {
+      const style = statusStyles[face.status] || statusStyles.unknown;
+      const color =
+        face.status === "marked" || face.status === "already_marked"
+          ? "#12b76a"
+          : face.status === "confirming" || face.status === "low_quality"
+          ? "#f79009"
+          : "#f04438";
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(face.box.x, face.box.y, face.box.w, face.box.h);
+
+      const label = face.name ? `${face.name} (${face.confidence ?? "?"}%)` : "Unknown";
+      ctx.font = "16px 'Segoe UI', sans-serif";
+      const textWidth = ctx.measureText(label).width;
+      ctx.fillStyle = color;
+      ctx.fillRect(face.box.x, Math.max(0, face.box.y - 24), textWidth + 12, 22);
+      ctx.fillStyle = "#0b0d17";
+      ctx.fillText(label, face.box.x + 6, Math.max(16, face.box.y - 8));
+    });
+  }
+
+  function logEvent(face) {
+    const style = statusStyles[face.status] || statusStyles.unknown;
+    const el = document.createElement("div");
+    el.className = "recognition-item";
+    const name = face.name || "Unknown";
+    const time = new Date().toLocaleTimeString();
+    el.innerHTML = `
+      <span>
+        <span class="name">${name}</span>
+        <span class="helper-text"> &middot; ${time}</span>
+      </span>
+      <span class="badge ${style.badge}">${style.label}</span>
+    `;
+    if (feed.firstChild && feed.firstChild.tagName === "P") {
+      feed.innerHTML = "";
+    }
+    feed.prepend(el);
+    while (feed.children.length > 30) {
+      feed.removeChild(feed.lastChild);
+    }
+  }
+
+  async function processFrame() {
+    if (processing) return;
+    processing = true;
+    try {
+      const dataUrl = captureFrameDataURL(video, 0.8);
+      const result = await postJSON(processUrl, { image: dataUrl });
+      if (!result.success) {
+        frameError.textContent = result.message;
+        return;
+      }
+      frameError.textContent = "";
+      drawDetections(result.faces);
+      result.faces.forEach(function (face) {
+        if (face.student_id) {
+          // Log once per status transition (e.g. confirming -> marked ->
+          // already_marked) instead of every single frame the student
+          // stays in view.
+          if (lastLoggedStatus[face.student_id] !== face.status) {
+            lastLoggedStatus[face.student_id] = face.status;
+            logEvent(face);
+          }
+        } else if (face.status === "unknown") {
+          const now = Date.now();
+          if (now - lastUnknownLogTime > UNKNOWN_LOG_COOLDOWN_MS) {
+            lastUnknownLogTime = now;
+            logEvent(face);
+          }
+        }
+      });
+    } catch (err) {
+      frameError.textContent = err.message;
+    } finally {
+      processing = false;
+    }
+  }
+
+  async function start() {
+    try {
+      stream = await startCamera(video);
+      statusEl.textContent = "Live";
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      resizeOverlay();
+      loopTimer = setInterval(processFrame, FRAME_INTERVAL_MS);
+    } catch (err) {
+      statusEl.textContent = "Camera error";
+      frameError.textContent = err.message;
+    }
+  }
+
+  function stop() {
+    clearInterval(loopTimer);
+    loopTimer = null;
+    stopCamera(stream);
+    stream = null;
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    statusEl.textContent = "Stopped";
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+  }
+
+  startBtn.addEventListener("click", start);
+  stopBtn.addEventListener("click", stop);
+  window.addEventListener("beforeunload", function () {
+    if (stream) stopCamera(stream);
+  });
+})();
+</script>
+{% endblock %}

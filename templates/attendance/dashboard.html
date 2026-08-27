@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · Attendance System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p>Overview for {{ stats.today|date:"l, F j, Y" }}</p>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total Students</div>
+    <div class="stat-value">{{ stats.total_students }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Today's Attendance</div>
+    <div class="stat-value">{{ stats.today_attendance }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Attendance %</div>
+    <div class="stat-value">{{ stats.attendance_percentage }}%</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Quick Action</div>
+    <div class="quick-actions" style="margin-top: 8px;">
+      <a class="btn btn-primary btn-block" href="{% url 'attendance:live_attendance' %}">Start Live Attendance</a>
+    </div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <h2 class="section-title">Recent Attendance</h2>
+    {% if stats.recent_attendance %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Status</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in stats.recent_attendance %}
+              <tr>
+                <td>{{ record.student.name }}</td>
+                <td>{{ record.date|date:"M j, Y" }}</td>
+                <td>{{ record.marked_at|date:"g:i A" }}</td>
+                <td><span class="badge badge-success">{{ record.get_status_display }}</span></td>
+                <td>{% if record.confidence %}{{ record.confidence|floatformat:1 }}%{% else %}&mdash;{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">No attendance has been recorded yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2 class="section-title">Quick Actions</h2>
+    <div class="quick-actions">
+      <a class="btn btn-secondary btn-block" href="{% url 'attendance:student_create' %}">Register a Student</a>
+      <a class="btn btn-secondary btn-block" href="{% url 'attendance:student_list' %}">Manage Students</a>
+      <a class="btn btn-secondary btn-block" href="{% url 'attendance:attendance_list' %}">View Attendance Records</a>
+      <a class="btn btn-secondary btn-block" href="/admin/">Open Admin Panel</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

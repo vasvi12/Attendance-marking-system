@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Attendance System{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a class="brand" href="{% url 'attendance:dashboard' %}">
+        <span class="brand-mark">CV</span>
+        Attendance System
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">&#9776;</button>
+      <div class="nav-links" id="navLinks">
+        <a href="{% url 'attendance:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{% url 'attendance:student_list' %}" class="{% if request.resolver_match.url_name == 'student_list' %}active{% endif %}">Students</a>
+        <a href="{% url 'attendance:student_create' %}" class="{% if request.resolver_match.url_name == 'student_create' %}active{% endif %}">Add Student</a>
+        <a href="{% url 'attendance:attendance_list' %}" class="{% if request.resolver_match.url_name == 'attendance_list' %}active{% endif %}">Attendance</a>
+        <a href="{% url 'attendance:live_attendance' %}" class="{% if request.resolver_match.url_name == 'live_attendance' %}active{% endif %}">Live Attendance</a>
+        <a href="/admin/">Admin</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="app-footer">
+    Computer Vision Attendance System &mdash; a portfolio / educational project, not a production biometric system.
+  </footer>
+
+  <script src="{% static 'js/app.js' %}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
