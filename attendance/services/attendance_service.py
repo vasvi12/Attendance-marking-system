@@ -4,8 +4,7 @@ and for the aggregate numbers the dashboard shows.
 
 Kept separate from views.py on purpose: views handle HTTP, this module
 handles rules ("what counts as marking someone present", "how do we compute
-today's percentage"). That split is what STEP 18 of the project brief asks
-for ("business logic is separated from UI logic").
+today's percentage").
 """
 
 from __future__ import annotations
