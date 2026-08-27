@@ -200,13 +200,13 @@ static/js/app.js          Camera capture + fetch helpers shared by pages
 scripts/
   test_camera.py          Standalone webcam sanity check
   capture_faces.py        Standalone CLI enrollment tool
-data/                     Enrollment images, trained model, labels (gitignored - see below)
+data/                     Enrollment images, trained model, labels (gitignored)
 docs/architecture.md      Full architecture writeup with diagrams
 ```
 
 ## Engineering Challenge
 
-The brief for this project was explicit: the hard part is not "detect a
+The hard part here was never "detect a
 face in an image" - it's **staying reasonably reliable across lighting,
 camera angle, face distance/pose, and multiple people in frame at once**,
 which is what an actual classroom looks like. Concretely, this
@@ -255,9 +255,8 @@ Being direct about this matters more than sounding impressive:
 - There is no built-in login/role separation for the main app (the Django
   admin has its own auth). Anyone who can reach the app can view records
   and enroll students.
-- **This is a portfolio/educational project, not a production biometric
-  system.** Deploying anything like this for real would require explicit
-  consent flows, data retention policy, stronger access control, and
+- **This is a personal project, not a production biometric system.** Deploying anything like this for real would require explicit
+  consent flows, a data retention policy, stronger access control, and
   likely legal review around biometric data handling, none of which is in
   scope here.
 
@@ -268,20 +267,8 @@ Being direct about this matters more than sounding impressive:
 - Better low-light handling (e.g. gamma correction or exposure-aware
   preprocessing ahead of CLAHE).
 - Basic anti-spoofing (liveness checks such as blink detection).
-- PostgreSQL for multi-classroom/production-scale deployments.
-- Cloud deployment guide (containerization, static/media file hosting).
-- Richer analytics (attendance trends over time, per-class breakdowns).
-- Automated attendance report exports (CSV/PDF, scheduled email digests).
+- PostgreSQL for multi-classroom deployments at larger scale.
 - Role-based authentication for teachers vs. administrators.
-- A companion mobile app.
-- Continued accuracy improvements to the detection/recognition thresholds
-  based on real classroom data.
-
-## Screenshots
-
-_Not included yet - add screenshots of the Dashboard, Students, Add
-Student/Capture, Attendance, and Live Attendance pages here once you've run
-the app against a real camera._
 
 ## Testing
 
