@@ -4,7 +4,7 @@ from .models import Student
 
 
 class StudentForm(forms.ModelForm):
-    """Registration form for STEP 6 (student enrollment)."""
+        """Registration form for enrolling a new student."""
 
     class Meta:
         model = Student
@@ -31,7 +31,7 @@ class StudentForm(forms.ModelForm):
 
 
 class AttendanceFilterForm(forms.Form):
-    """Filters for the attendance list page (STEP 8: 'Attendance')."""
+        """Filters for the attendance list page."""
 
     date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
     student = forms.ModelChoiceField(
