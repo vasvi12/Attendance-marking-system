@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Environment variables
+.env
+
+# Django
+db.sqlite3
+/staticfiles/
+/media/
+
+# Face data, trained model, and DNN weights (see README "Face Detection Model")
+/data/
+
+# Editor/OS cruft
+.vscode/
+.idea/
+.DS_Store
