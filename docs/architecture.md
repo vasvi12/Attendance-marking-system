@@ -43,10 +43,8 @@ flowchart TB
 Key decision: **views never call OpenCV directly.** Every `cv2` call lives
 in `attendance/services/`. Views parse the incoming frame, hand it to a
 service, and turn the service's return value into a JSON/HTML response.
-This is what STEP 18 of the project brief asks for ("computer vision is
-separated from Django views") and it's also just good practice - the CV
-code is unit-testable without spinning up a test client, and the services
-are reusable from the standalone `scripts/`.
+This keeps the CV code unit-testable without spinning up a test client, and
+lets the services be reused from the standalone `scripts/`.
 
 ## 2. Why the browser captures frames, not the server
 
@@ -252,6 +250,6 @@ at the top and swallowed:
   confirmation uses `request.session` rather than a new database table -
   it's inherently per-browser-session state, not something that needs to
   outlive the page.
-* **SQLite, not Postgres.** Appropriate for a single-classroom portfolio
-  deployment; `DATABASES` is the only place you'd touch to swap engines
-  later (see README "Future Improvements").
+* **SQLite, not Postgres.** Appropriate for a single-classroom deployment;
+  `DATABASES` is the only place you'd touch to swap engines later (see
+  README "Future Improvements").
